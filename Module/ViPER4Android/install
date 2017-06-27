@@ -1,0 +1,258 @@
+#!/sbin/sh
+#
+# ViPER4Android 2.5.0.1
+#
+# Installation prepared by guitardedhero @XDA Developers
+
+mount /system
+mount rw,remount /system
+mount rw,remount /system /system
+
+OUTFD=/proc/self/fd/$2;
+ZIPFILE="$3";
+DIR=$(dirname "$ZIPFILE");
+ZIP=$3
+ViPER=/tmp/zip
+SYS=/system
+VEND=/vendor
+CSUD=customize/su.d
+ADDON=/system/addon.d
+APP=/system/app
+ETC=/system/etc
+LIB=/system/lib
+LIB64=/system/lib64
+LIBFX=/system/lib/soundfx
+SFX=soundfx
+CLIB=customize/lib
+PAPP=/system/priv-app
+CAPP=customize/app
+SUD=/system/su.d
+PROXY=libeffectproxy.so
+AEV=/system/etc/audio_effects_vendor.conf
+AOE=/system/vendor/etc/audio_offload_effects.conf
+V4A=ViPER4Android
+V4APK=ViPER4Android.apk
+V4AX86=libv4a_fx_jb_X86.so
+V4AARM=libv4a_fx_jb_NEON.so
+V4ALIB=libv4a_fx_ics.so
+V4AUTL86=x86/libV4AJniUtils.so
+V4AUTLARM=armeabi/libV4AJniUtils.so
+V4AUTL=/lib/arm/libV4AJniUtils.so
+JNI=libV4AJniUtils.so
+HTC=/system/etc/htc_audio_effects.conf
+API=$(cat /system/build.prop | grep "ro.build.version.sdk=" | dd bs=1 skip=21 count=2)
+NAME=$(cat /system/build.prop | grep "ro.product.name=")
+NAME=${NAME:16}
+ABI=$(grep_prop ro.product.cpu.abi | cut -c-3)
+ABILONG=$(grep_prop ro.product.cpu.abi)
+SP=set_perm
+SPR=set_perm_recursive
+CONF=audio_policy.conf
+AUDOUT=audio_output_policy.conf
+AUDXML=audio_policy_configuration.xml
+
+ui_print() { echo -e "ui_print $1\nui_print" > $OUTFD; }
+
+set_perm() {
+  uid=$1; gid=$2; mod=$3;
+  shift 3;
+  chown $uid.$gid $*; chown $uid:$gid $*;
+  chmod $mod $*;
+}
+
+set_perm_recursive() {
+  uid=$1; gid=$2; dmod=$3; fmod=$4;
+  shift 4;
+  until [ ! "$1" ]; do
+    chown -R $uid.$gid $1; chown -R $uid:$gid $1;
+    find "$1" -type d -exec chmod $dmod {} +;
+    find "$1" -type f -exec chmod $fmod {} +;
+    shift;
+  done;
+}
+
+if [ $NAME = angler ] || [ $NAME = bullhead ] || [ $NAME = flounder ]; then
+  mount /vendor
+  mount rw,remount /vendor
+  mount rw,remount /vendor /vendor
+fi
+
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print "                  ViPER4Android"
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print " "
+
+if [ -e $ETC/audio_effects.conf ]; then
+  sed -i '/deep_buffer {/,/}/d' $ETC/audio_effects.conf
+  sed -i '/raw {/,/}/d' $ETC/audio_effects.conf
+fi
+
+if [ -e $SVETC/audio_effects.conf ]; then
+  sed -i '/deep_buffer {/,/}/d' $SVETC/audio_effects.conf
+  sed -i '/raw {/,/}/d' $SVETC/audio_effects.conf
+fi
+
+if [ -e $VETC/audio_effects.conf ]; then
+  sed -i '/deep_buffer {/,/}/d' $VETC/audio_effects.conf
+  sed -i '/raw {/,/}/d' $VETC/audio_effects.conf
+fi
+
+if [ -e $SVETC/$AUDOUT ]; then
+  sed -i '/deep_buffer {/,/}/d' $SVETC/$AUDOUT
+fi
+
+if [ -e $VETC/$AUDOUT ]; then
+  sed -i '/deep_buffer {/,/}/d' $VETC/$AUDOUT
+fi
+
+if [ -f $SVETC/$AUDXML ]; then
+  sed -i '/deep_buffer {/,/}/d' $SVETC/$AUDXML
+  sed -i '/AUDIO_OUTPUT_FLAG_DEEP_BUFFER {/,/}/d' $SVETC/$AUDXML
+fi
+
+rm -rf $PAPP/$V4A
+rm -rf $PAPP/ViPER4Android_FX_A4.x
+rm -rf $APP/ViPER4Android_FX_A4.x
+rm -rf $PAPP/Viper4Android
+rm -rf $APP/$V4A
+rm -rf $PAPP/AudioFX
+rm -rf $APP/AudioFX
+rm -rf $PAPP/DSPManager
+rm -rf $APP/DSPManager
+rm -rf $V4ADATA
+rm -r $PAPP/$V4APK
+rm -r $APP/$V4APK
+rm -r $ADDON/blacklist
+rm -r $ADDON/50-rr.sh
+
+mkdir $ViPER
+cd $ViPER
+unzip -o "$ZIP"
+
+CONF=audio_effects.conf
+
+if [ -e $ETC/audio_effects.conf ]; then
+  sed -i '/v4a_fx {/,/}/d' $ETC/audio_effects.conf
+  sed -i '/v4a_standard_fx {/,/}/d' $ETC/audio_effects.conf
+  sed -i 's/^libraries {/libraries {\n  v4a_fx {\n    path \/system\/lib\/soundfx\/libv4a_fx_ics.so\n  }/g' $ETC/audio_effects.conf
+  sed -i 's/^effects {/effects {\n  v4a_standard_fx {\n    library v4a_fx\n    uuid 41d3c987-e6cf-11e3-a88a-11aba5d5c51b\n  }/g' $ETC/audio_effects.conf
+fi
+
+if [ -e $SVETC/audio_effects.conf ]; then
+  sed -i '/v4a_fx {/,/}/d' $SVETC/audio_effects.conf
+  sed -i '/v4a_standard_fx {/,/}/d' $SVETC/audio_effects.conf
+  sed -i 's/^libraries {/libraries {\n  v4a_fx {\n    path \/system\/lib\/soundfx\/libv4a_fx_ics.so\n  }/g' $SVETC/audio_effects.conf
+  sed -i 's/^effects {/effects {\n  v4a_standard_fx {\n    library v4a_fx\n    uuid 41d3c987-e6cf-11e3-a88a-11aba5d5c51b\n  }/g' $SVETC/audio_effects.conf
+fi
+
+if [ -e $VETC/audio_effects.conf ]; then
+  sed -i '/v4a_fx {/,/}/d' $VETC/audio_effects.conf
+  sed -i '/v4a_standard_fx {/,/}/d' $VETC/audio_effects.conf
+  sed -i 's/^libraries {/libraries {\n  v4a_fx {\n    path \/system\/lib\/soundfx\/libv4a_fx_ics.so\n  }/g' $VETC/audio_effects.conf
+  sed -i 's/^effects {/effects {\n  v4a_standard_fx {\n    library v4a_fx\n    uuid 41d3c987-e6cf-11e3-a88a-11aba5d5c51b\n  }/g' $VETC/audio_effects.conf
+fi
+
+if [ -e $HTC ]; then
+  sed -i '/v4a_fx {/,/}/d' $HTC
+  sed -i '/v4a_standard_fx {/,/}/d' $HTC
+  sed -i 's/^libraries {/libraries {\n  v4a_fx {\n    path \/system\/lib\/soundfx\/libv4a_fx_ics.so\n  }/g' $HTC
+  sed -i 's/^effects {/effects {\n  v4a_standard_fx {\n    library v4a_fx\n    uuid 41d3c987-e6cf-11e3-a88a-11aba5d5c51b\n  }/g' $HTC
+fi
+
+if [ -e $AEV ]; then
+  sed -i '/v4a_fx {/,/}/d' $AEV
+  sed -i '/v4a_standard_fx {/,/}/d' $AEV
+  sed -i 's/^libraries {/libraries {\n  v4a_fx {\n    path \/system\/lib\/soundfx\/libv4a_fx_ics.so\n  }/g' $AEV
+  sed -i 's/^effects {/effects {\n  v4a_standard_fx {\n    library v4a_fx\n    uuid 41d3c987-e6cf-11e3-a88a-11aba5d5c51b\n  }/g' $AEV
+fi
+
+if [ -e $AOE ]; then
+  sed -i '/v4a_fx {/,/}/d' $AOE
+  sed -i '/v4a_standard_fx {/,/}/d' $AOE
+  sed -i 's/^libraries {/libraries {\n  v4a_fx {\n    path \/system\/lib\/soundfx\/libv4a_fx_ics.so\n  }/g' $AOE
+  sed -i 's/^effects {/effects {\n  v4a_standard_fx {\n    library v4a_fx\n    uuid 41d3c987-e6cf-11e3-a88a-11aba5d5c51b\n  }/g' $AOE
+fi
+
+if [ -e $LIB64 ]; then
+  mkdir -p $LIB64/soundfx
+  cp $CL64/soundfx/$PROXY $LIB64/soundfx/$PROXY
+  $SPR 0 0 0755 0644 $LIB64/soundfx
+fi
+
+if [ $API -ge 21 ]; then
+  mkdir -p $PAPP/$V4A
+  mkdir -p $PAPP/$V4A/lib/arm
+  mkdir -p $SUD
+  cp -rf viper/* /system
+  cp $CSUD/soundserver $SUD/soundserver
+  cp $CAPP/$V4APK $PAPP/$V4A/$V4APK
+  if [ $ABI = x86 ] || [ $ABILONG = x86_64 ]; then
+    cp $CAPP/$V4AUTL86 $PAPP/$V4A$V4AUTL
+    cp $CAPP/$V4AUTL86 $LIB/$JNI
+    cp $CLIB/$V4A86 $LIBFX/$V4ALIB
+  else
+    cp $CAPP/$V4AUTLARM $PAPP/$V4A$V4AUTL
+    cp $CAPP/$V4AUTLARM $LIB/$JNI
+    cp $CLIB/$V4AARM $LIBFX/$V4ALIB
+  fi
+  $SPR 0 0 0755 0755 $SUD
+  $SPR 0 0 0755 0644 $PAPP/$V4A
+  $SP 0 0 0644 $LIBFX/$V4ALIB
+  $SP 0 0 0644 $LIBFX/$PROXY
+  $SP 0 0 0644 $LIB/$JNI
+fi
+
+if [ $API -lt 21 ]; then
+  cp -rf viper/* /system
+  cp $CAPP/$V4APK $APP/$V4APK
+  if [ $ABI -eq x86 ]; then
+    cp $CAPP/$V4AUTL86 $LIB/$JNI
+    cp $CLIB/$V4A86 $LIBFX/$V4ALIB
+  else
+    cp $CAPP/$V4AUTLARM $LIB/$JNI
+    cp $CLIB/$V4AARM $LIBFX/$V4ALIB
+  fi
+  $SP 0 0 0644 $APP/$V4APK
+  $SP 0 0 0644 $LIB/$JNI
+  $SP 0 0 0644 $LIBFX/$V4ALIB
+  $SP 0 0 0644 $LIBFX/$PROXY
+fi
+
+rm -rf $ViPER
+
+umount $SYS
+
+if [ $NAME = angler ] || [ $NAME = bullhead ] || [ $NAME = flounder ]; then
+  umount $VEND
+fi
+
+sleep 4
+
+exit 0

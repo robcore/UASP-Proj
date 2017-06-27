@@ -1,0 +1,95 @@
+#!/sbin/sh
+OUTFD=$2
+ZIP=$3
+
+ui_print() {
+  echo -n -e "ui_print $1\n" > /proc/self/fd/$OUTFD
+  echo -n -e "ui_print\n" > /proc/self/fd/$OUTFD
+}
+
+ui_print "MaxxAudio_r1"
+
+# Mount system
+ui_print "Mounting system..."
+mount /system
+mount -o rw,remount /system
+mount -o rw,remount /system /system
+
+# Remove files
+ui_print "Removing files..."
+rm -rf /system/app/MaxxAudio*
+rm -f /system/lib/soundfx/libmaxxeffect-cembedded.so
+rm -f /system/lib/libEQGraphLib.so
+rm -f /system/lib/libMA3-wavesfx-Coretex_A9.so
+rm -f /system/lib/libMA3-processcode-Coretex_A9.so
+rm -f /system/lib/libosl-maxxaudio-itf.so
+rm -f /system/lib/libwavesfxservice.so
+
+# Normal/vendor config locations
+CONFIG_FILE=/system/etc/audio_effects.conf
+VENDOR_CONFIG=/system/vendor/etc/audio_effects.conf
+
+# If vendor exists, patch it instead
+if [ -f $VENDOR_CONFIG ];
+then
+	CONFIG_FILE=$VENDOR_CONFIG
+fi
+
+# Restore audio_effects.conf
+ui_print "Restoring $CONFIG_FILE..."
+
+# If backup file exists restore that one
+if [-f $CONFIG_FILE.bak ];
+then
+	mv -f $CONFIG_FILE.bak $CONFIG_FILE
+fi
+
+# Remove library & effect
+sed -i '/maxxaudio3/,/}/d' $CONFIG_FILE
+
+# Extract files
+ui_print "Extracting files..."
+cd /tmp
+mkdir maxxaudio3
+cd maxxaudio3
+unzip -o "$ZIP"
+
+# Copy files
+ui_print "Copying files..."
+
+cp /tmp/maxxaudio3/lib/soundfx/libmaxxeffect-cembedded.so /system/lib/soundfx/libmaxxeffect-cembedded.so
+
+# Get API version
+API=$(cat /system/build.prop | grep "ro.build.version.sdk=" | dd bs=1 skip=21 count=2)
+
+if [ "$API" -ge "21" ];
+then
+	ui_print "Make sure to turn OFF NuPlayer in Developer Options!"
+	mkdir -p /system/app/MaxxAudio/lib/arm
+	cp /tmp/maxxaudio3/app/MaxxAudio/MaxxAudio.apk /system/app/MaxxAudio/MaxxAudio.apk
+	cp /tmp/maxxaudio3/app/MaxxAudio/lib/arm/libEQGraphLib.so /system/app/MaxxAudio/lib/arm/libEQGraphLib.so
+	cp /tmp/maxxaudio3/app/MaxxAudio/lib/arm/libosl-maxxaudio-itf.so /system/app/MaxxAudio/lib/arm/libosl-maxxaudio-itf.so
+	cp /tmp/maxxaudio3/app/MaxxAudio/lib/arm/libwavesfxservice.so /system/app/MaxxAudio/lib/arm/libwavesfxservice.so
+	cp /tmp/maxxaudio3/lib/libMA3-wavesfx-Coretex_A9.so /system/lib/libMA3-wavesfx-Coretex_A9.so
+	cp /tmp/maxxaudio3/lib/libMA3-processcode-Coretex_A9.so /system/lib/libMA3-processcode-Coretex_A9.so
+else
+	cp /tmp/maxxaudio3/app/MaxxAudio/MaxxAudio.apk /system/app/MaxxAudio.apk
+	cp /tmp/maxxaudio3/app/MaxxAudio/lib/arm/libEQGraphLib.so /system/lib/libEQGraphLib.so
+	cp /tmp/maxxaudio3/app/MaxxAudio/lib/arm/libosl-maxxaudio-itf.so /system/lib/libosl-maxxaudio-itf.so
+	cp /tmp/maxxaudio3/app/MaxxAudio/lib/arm/libwavesfxservice.so /system/lib/libwavesfxservice.so
+	cp /tmp/maxxaudio3/lib/libMA3-wavesfx-Coretex_A9.so /system/lib/libMA3-wavesfx-Coretex_A9.so
+	cp /tmp/maxxaudio3/lib/libMA3-processcode-Coretex_A9.so /system/lib/libMA3-processcode-Coretex_A9.so
+fi
+
+ui_print "Patching $CONFIG_FILE..."
+
+# Add libary
+sed -i 's/^libraries {/libraries {\n  maxxaudio3 {\n    path \/system\/lib\/soundfx\/libmaxxeffect-cembedded.so\n  }/g' $CONFIG_FILE
+
+# Add effect
+sed -i 's/^effects {/effects {\n  maxxaudio3 {\n    library maxxaudio3\n    uuid ae12da60-99ac-11df-b456-0002a5d5c51b\n  }/g' $CONFIG_FILE
+
+# Cleanup
+ui_print "Brought to you by worstenbrood, aki_007, ahrion @2015"
+umount /system
+rm -rf /tmp/dap
